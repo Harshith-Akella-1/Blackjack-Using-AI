@@ -19,7 +19,7 @@ std::vector <Card>& Deck::getCards(){
 }
 
 bool Deck::isEmpty() const{
-    deck.empty();
+    return deck.empty();
 }
 
 void Deck::RandomShuffle(){

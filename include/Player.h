@@ -22,18 +22,18 @@ class Player{
     int totalbet() const;
 
     void hit(Deck &deck);
-    void stand();
-    void doubledown(Deck &deck);
+    void stand();   //?
+    void doubledown(Deck &deck); // work on from here?
     bool candoubledown() const;
     void split();   
-    bool cansplit() const;
+    bool cansplit() const; 
     void Insurance();
-    void surrender();
+    void surrender(); 
     
-    void changebet();
-    void addchips(int denomination, int count = 1);
-    void removechips(int denomination, int count = 1);
-    void showchips() const;
+    void changebet(); // till here
+    void addchips(int denomination); //?
+    void removechips(int denomination); //line 87
+    void showchips() const; //should include if gui code is separate?
 
     bool bust() const;
     bool hasBlackjack() const;
