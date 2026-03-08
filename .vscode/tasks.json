@@ -2,39 +2,39 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build C++ File",
+            "label": "Build C++ Project",
             "type": "shell",
-            "command": "g++",
+            "command": "cmd",
             "args": [
-                "${file}",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "/c",
+                "if not exist \"${workspaceFolder}\\bin\" mkdir \"${workspaceFolder}\\bin\" && C:\\MinGW\\bin\\g++.exe -g ${workspaceFolder}\\src\\*.cpp -o ${workspaceFolder}\\bin\\blackjack.exe -std=c++17 -I${workspaceFolder}\\src"
             ],
-            "options": {
-                "cwd": "${fileDirname}"
-            },
-            "problemMatcher": ["$gcc"],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
-        },
-        {
-            "label": "Build and Run C++ File",
-            "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-Command",
-                "g++ '${file}' -o '${fileDirname}\\${fileBasenameNoExtension}.exe'; if ($LASTEXITCODE -eq 0) { & '${fileDirname}\\${fileBasenameNoExtension}.exe' }"
-            ],
-            "options": {
-                "cwd": "${fileDirname}"
             },
             "problemMatcher": ["$gcc"],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "detail": "Compiles all .cpp files in src folder"
+        },
+        {
+            "label": "Build and Run",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "if not exist \"${workspaceFolder}\\bin\" mkdir \"${workspaceFolder}\\bin\" && C:\\MinGW\\bin\\g++.exe -g ${workspaceFolder}\\src\\*.cpp -o ${workspaceFolder}\\bin\\blackjack.exe -std=c++17 -I${workspaceFolder}\\src && ${workspaceFolder}\\bin\\blackjack.exe"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "detail": "Builds and runs the project in terminal"
         }
     ]
 }
