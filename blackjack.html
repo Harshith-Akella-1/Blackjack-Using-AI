@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --felt: #0d3d1f;
+    --felt-light: #114d28;
+    --felt-dark: #081f10;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --ivory: #f5f0e8;
+    --card-bg: #fdfaf4;
+    --card-shadow: rgba(0,0,0,0.5);
+    --red: #c0392b;
+    --black: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: radial-gradient(ellipse at center, #0a2e12 0%, #041208 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    color: var(--ivory);
+  }
+
+  .table-wrap {
+    width: 100%;
+    max-width: 900px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .table-header {
+    text-align: center;
+    padding: 10px 0 4px;
+  }
+  .table-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+  .table-header .subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: rgba(201,168,76,0.5);
+    text-transform: uppercase;
+  }
+
+  .felt-area {
+    background: radial-gradient(ellipse at 50% 40%, var(--felt-light) 0%, var(--felt) 60%, var(--felt-dark) 100%);
+    border-radius: 24px;
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 80px rgba(0,0,0,0.3);
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .felt-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg, transparent, transparent 20px,
+      rgba(255,255,255,0.015) 20px, rgba(255,255,255,0.015) 21px
+    );
+    pointer-events: none;
+  }
+
+  .zone-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(201,168,76,0.5);
+    margin-bottom: 4px;
+  }
+
+  .hand-area { display: flex; flex-direction: column; gap: 6px; min-height: 120px; }
+  .hand-row  { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+  .hand-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; color: var(--gold-light);
+    margin-left: 4px; align-self: center;
+  }
+  .hand-label-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  /* Cards */
+  .card {
+    width: 62px; height: 90px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1.5px solid #ddd;
+    box-shadow: 3px 4px 12px var(--card-shadow), 1px 1px 0 rgba(255,255,255,0.8) inset;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 5px 6px;
+    font-family: 'Playfair Display', serif; font-weight: 700;
+    position: relative;
+    animation: cardDeal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transform-origin: top center;
+    flex-shrink: 0;
+  }
+  @keyframes cardDeal {
+    from { opacity: 0; transform: translateY(-30px) scale(0.85) rotate(-5deg); }
+    to   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  }
+  .card.red   { color: var(--red); }
+  .card.black { color: var(--black); }
+  .card .rank-top    { font-size: 0.85rem; line-height: 1; }
+  .card .suit-top    { font-size: 0.65rem; line-height: 1; }
+  .card .center-suit { font-size: 1.5rem; position: absolute; top:50%; left:50%; transform: translate(-50%,-50%); }
+  .card .rank-bot    { font-size: 0.85rem; line-height: 1; align-self: flex-end; transform: rotate(180deg); }
+  .card .suit-bot    { font-size: 0.65rem; line-height: 1; align-self: flex-end; transform: rotate(180deg); }
+
+  .card.hole {
+    background: linear-gradient(135deg, #1a4a7a 25%, #0d2d4a 25%, #0d2d4a 50%, #1a4a7a 50%, #1a4a7a 75%, #0d2d4a 75%);
+    background-size: 12px 12px;
+    border-color: #2a5a8a;
+  }
+
+  /* Split */
+  .split-label {
+    font-size: 0.55rem; color: var(--gold); letter-spacing: 0.2em;
+    text-transform: uppercase; align-self: center;
+    writing-mode: vertical-lr; margin: 0 4px;
+  }
+
+  /* Info bar */
+  .info-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(201,168,76,0.2);
+  }
+  .info-item { text-align: center; }
+  .info-item .label { font-size: 0.55rem; letter-spacing: 0.2em; color: rgba(201,168,76,0.6); text-transform: uppercase; }
+  .info-item .value { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--gold-light); }
+  .info-item .value.green { color: #5dde8c; }
+
+  /* Chips */
+  .chips-area { display: flex; flex-direction: column; gap: 8px; }
+  .chips-row  { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .chip {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 4px dashed rgba(255,255,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+    color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    user-select: none; position: relative;
+  }
+  .chip::before { content:''; position:absolute; inset:4px; border-radius:50%; border:2px solid rgba(255,255,255,0.15); }
+  .chip:hover:not(:disabled) { transform: translateY(-4px) scale(1.08); box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+  .chip:active:not(:disabled) { transform: scale(0.95); }
+  .chip:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .chip.c1    { background: radial-gradient(circle at 35% 35%, #7fc97f, #27ae60); }
+  .chip.c5    { background: radial-gradient(circle at 35% 35%, #e87070, #e74c3c); }
+  .chip.c25   { background: radial-gradient(circle at 35% 35%, #5dade2, #2980b9); }
+  .chip.c100  { background: radial-gradient(circle at 35% 35%, #566573, #2c3e50); }
+  .chip.c500  { background: radial-gradient(circle at 35% 35%, #bb8fce, #8e44ad); }
+  .chip.c1k   { background: radial-gradient(circle at 35% 35%, #f9ca74, #f39c12); color:#3d2b00; text-shadow:none; }
+  .chip.c5k   { background: radial-gradient(circle at 35% 35%, #f0a97b, #e67e22); }
+  .chip.c10k  { background: radial-gradient(circle at 35% 35%, #48c9b0, #16a085); }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px; border-radius: 8px;
+    border: 1.5px solid var(--gold);
+    background: rgba(201,168,76,0.1); color: var(--gold-light);
+    font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn:hover:not(:disabled) { background: rgba(201,168,76,0.25); transform: translateY(-1px); }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn.primary { background: var(--gold); color: var(--felt-dark); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: var(--gold-light); }
+  .btn.danger  { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
+  .btn.danger:hover:not(:disabled) { background: rgba(231,76,60,0.2); }
+
+  /* Message */
+  .message-box {
+    text-align: center; padding: 10px; border-radius: 10px;
+    font-family: 'Playfair Display', serif; font-size: 1.15rem;
+    min-height: 44px; transition: all 0.3s;
+  }
+  .message-box.win  { color: #5dde8c; background: rgba(93,222,140,0.08);  border: 1px solid rgba(93,222,140,0.2); }
+  .message-box.lose { color: #e87070; background: rgba(232,112,112,0.08); border: 1px solid rgba(232,112,112,0.2); }
+  .message-box.push { color: var(--gold-light); background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2); }
+  .message-box.info { color: var(--ivory); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+  .message-box.bj   { color: #f9ca74; background: rgba(249,202,116,0.1); border: 1px solid rgba(249,202,116,0.3); font-size: 1.35rem; }
+  .message-box.error{ color: #e87070; background: rgba(231,76,60,0.08);  border: 1px solid rgba(231,76,60,0.3); font-size:0.85rem; }
+
+  .phase-badge {
+    display: inline-block; font-size: 0.55rem; letter-spacing: 0.25em;
+    text-transform: uppercase; color: rgba(201,168,76,0.7);
+    border: 1px solid rgba(201,168,76,0.3); padding: 3px 10px;
+    border-radius: 20px; margin-bottom: 6px;
+  }
+
+  .divider { height: 1px; background: linear-gradient(to right, transparent, rgba(201,168,76,0.3), transparent); margin: 2px 0; }
+
+  .clear-bet-row { display: flex; justify-content: center; gap: 10px; }
+
+  .status-badge {
+    font-size: 0.6rem; font-family: 'DM Mono', monospace;
+    letter-spacing: 0.15em; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;
+  }
+  .status-badge.bust  { background: rgba(231,76,60,0.2);  color: #e87070; border: 1px solid rgba(231,76,60,0.4); }
+  .status-badge.bj    { background: rgba(249,202,116,0.2); color: #f9ca74; border: 1px solid rgba(249,202,116,0.4); }
+  .status-badge.stand { background: rgba(41,128,185,0.2);  color: #85c1e9; border: 1px solid rgba(41,128,185,0.4); }
+
+  /* current-hand indicator */
+  .hand-row.active-hand { outline: 2px solid rgba(201,168,76,0.4); border-radius: 8px; padding: 4px; }
+
+  /* loading spinner overlay */
+  #spinner {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 999;
+    align-items: center; justify-content: center;
+  }
+  #spinner.on { display: flex; }
+  .spin-ring {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 4px solid rgba(201,168,76,0.2);
+    border-top-color: var(--gold);
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="spinner"><div class="spin-ring"></div></div>
+
+<div class="table-wrap">
+  <div class="table-header">
+    <h1>BLACKJACK</h1>
+    <div class="subtitle">Blackjack pays 3 to 2 &nbsp;·&nbsp; Dealer stands on 17</div>
+  </div>
+
+  <div class="felt-area">
+
+    <!-- DEALER -->
+    <div class="hand-area" id="dealer-zone">
+      <div class="zone-label">Dealer</div>
+      <div class="hand-label-row">
+        <div class="hand-row" id="dealer-hand"></div>
+        <div class="hand-value" id="dealer-value"></div>
+        <span id="dealer-status"></span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- MESSAGE -->
+    <div class="message-box info" id="message">Place your bet to begin.</div>
+
+    <div class="divider"></div>
+
+    <!-- PLAYER -->
+    <div class="hand-area" id="player-zone">
+      <div class="zone-label">Player</div>
+      <div class="hand-label-row" id="player-label-row">
+        <div class="hand-row" id="player-hand"></div>
+        <div class="hand-value" id="player-value"></div>
+        <span id="player-status"></span>
+        <!-- split hand injected dynamically -->
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- INFO BAR -->
+    <div class="info-bar">
+      <div class="info-item">
+        <div class="label">Balance</div>
+        <div class="value green" id="balance">$50,000</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Bet</div>
+        <div class="value" id="bet-display">$0</div>
+      </div>
+      <div class="info-item">
+        <div class="label">Split Bet</div>
+        <div class="value" id="split-bet-display">—</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- BETTING CHIPS -->
+    <div class="chips-area" id="chips-section">
+      <div class="phase-badge" id="phase-label">Phase: Betting</div>
+      <div class="chips-row">
+        <button class="chip c1"   onclick="placeBet(1)">$1</button>
+        <button class="chip c5"   onclick="placeBet(5)">$5</button>
+        <button class="chip c25"  onclick="placeBet(25)">$25</button>
+        <button class="chip c100" onclick="placeBet(100)">$100</button>
+        <button class="chip c500" onclick="placeBet(500)">$500</button>
+        <button class="chip c1k"  onclick="placeBet(1000)">$1K</button>
+        <button class="chip c5k"  onclick="placeBet(5000)">$5K</button>
+        <button class="chip c10k" onclick="placeBet(10000)">$10K</button>
+      </div>
+      <div class="clear-bet-row">
+        <button class="btn" onclick="api('clear_bet')">Clear Bet</button>
+        <button class="btn primary" id="deal-btn" onclick="api('deal')" disabled>Deal</button>
+      </div>
+    </div>
+
+    <!-- PLAYER ACTIONS (shown during player phase) -->
+    <div class="actions-area" id="actions-section" style="display:none; flex-wrap:wrap; gap:8px; justify-content:center;">
+      <button class="btn primary" id="btn-hit"    onclick="playerAction('hit')">Hit</button>
+      <button class="btn"         id="btn-stand"  onclick="playerAction('stand')">Stand</button>
+      <button class="btn"         id="btn-double" onclick="playerAction('double_down')">Double Down</button>
+      <button class="btn"         id="btn-split"  onclick="playerAction('split')">Split</button>
+      <button class="btn"         id="btn-insure" onclick="playerAction('insurance')">Insurance</button>
+      <button class="btn danger"  id="btn-surr"   onclick="playerAction('surrender')">Surrender</button>
+    </div>
+
+    <!-- NEXT ROUND -->
+    <div style="display:none; justify-content:center;" id="next-section">
+      <button class="btn primary" onclick="nextRound()">Next Round</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+// Use relative path when served by Flask, fallback to localhost for direct file open
+const API = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+  ? `${location.protocol}//${location.host}/api`
+  : "http://localhost:5000/api";
+
+// ═══════════════════════════════════════════════════════════
+//  PHASE + CURRENT-HAND TRACKING (frontend only)
+// ═══════════════════════════════════════════════════════════
+let phase       = "betting";   // betting | player | dealer | result
+let currentHand = 0;           // 0 = main, 1 = split (frontend tracks which hand to play)
+let lastState   = null;        // last state from server
+
+// ═══════════════════════════════════════════════════════════
+//  API HELPERS
+// ═══════════════════════════════════════════════════════════
+function spin(on) {
+  document.getElementById('spinner').classList.toggle('on', on);
+}
+
+// Always POST these even with no body
+const POST_ENDPOINTS = new Set([
+  "deal","clear_bet","new_round","split","insurance","surrender","dealer_play"
+]);
+
+async function apiCall(endpoint, body = null) {
+  spin(true);
+  try {
+    const isPost = body !== null || POST_ENDPOINTS.has(endpoint);
+    const opts = {
+      method: isPost ? "POST" : "GET",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    };
+    if (isPost) opts.body = JSON.stringify(body || {});
+    const res  = await fetch(`${API}/${endpoint}`, opts);
+    const data = await res.json();
+    if (!data.ok) {
+      setMsg(data.error || "Server error", "error");
+      return null;
+    }
+    return data;
+  } catch (e) {
+    setMsg("Cannot reach server — is Flask running on port 5000?", "error");
+    return null;
+  } finally {
+    spin(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ACTION DISPATCHERS
+// ═══════════════════════════════════════════════════════════
+async function placeBet(amt) {
+  if (phase !== "betting") return;
+  const data = await apiCall("bet", { amount: amt });
+  if (data) applyState(data.state, "betting");
+}
+
+async function api(endpoint) {
+  if (endpoint === "clear_bet" && phase !== "betting") return;
+  if (endpoint === "deal" && phase !== "betting") return;
+
+  const data = await apiCall(endpoint);
+  if (!data) return;
+
+  if (endpoint === "deal") {
+    phase = data.state.phase || "player";
+    currentHand = 0;
+  }
+  applyState(data.state, data.state.phase || phase);
+}
+
+async function playerAction(action) {
+  if (phase !== "player") return;
+
+  const body = ["hit", "stand", "double_down"].includes(action)
+    ? { hand: currentHand }
+    : {};
+
+  const data = await apiCall(action, body);
+  if (!data) return;
+
+  const s = data.state;
+
+  // Decide if we should advance to the split hand or go to dealer
+  if (action === "split") {
+    // After split, play main hand first
+    currentHand = 0;
+    applyState(s, "player");
+    return;
+  }
+
+  const mainDone  = s.playerBust || s.playerStanding || s.hasSurrendered || s.didDoubleDown;
+  const splitDone = !s.didSplit || s.splitBust || s.splitStanding || s.splitBet && s.didSplit && (s.splitBust || s.splitStanding);
+
+  if (s.phase === "result") {
+    phase = "result";
+    applyState(s, "result");
+    return;
+  }
+
+  // If main hand is done and there's a split hand to play
+  if (currentHand === 0 && mainDone && s.didSplit && !splitDone) {
+    currentHand = 1;
+    setMsg("Now playing your Split Hand", "info");
+    applyState(s, "player");
+    return;
+  }
+
+  // If both hands done → trigger dealer
+  const bothDone = mainDone && (!s.didSplit || splitDone);
+  if (bothDone) {
+    phase = "dealer";
+    setMsg("Dealer's turn...", "info");
+    applyState(s, "dealer");
+    // Small delay for drama, then call dealer_play
+    setTimeout(async () => {
+      const d = await apiCall("dealer_play");
+      if (d) { phase = "result"; applyState(d.state, "result"); }
+    }, 800);
+    return;
+  }
+
+  applyState(s, "player");
+}
+
+async function nextRound() {
+  const data = await apiCall("new_round");
+  if (!data) return;
+  phase = "betting";
+  currentHand = 0;
+  applyState(data.state, "betting");
+  setMsg("Place your bet to begin.", "info");
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+const RED_SUITS = new Set(["♥", "♦"]);
+
+function cardHTML(c, hidden) {
+  if (hidden || c.rank === "?") {
+    return `<div class="card hole"></div>`;
+  }
+  const col = RED_SUITS.has(c.suit) ? "red" : "black";
+  return `<div class="card ${col}">
+    <div><div class="rank-top">${c.rank}</div><div class="suit-top">${c.suit}</div></div>
+    <div class="center-suit">${c.suit}</div>
+    <div><div class="rank-bot">${c.rank}</div><div class="suit-bot">${c.suit}</div></div>
+  </div>`;
+}
+
+function badge(text, cls) {
+  return `<span class="status-badge ${cls}">${text}</span>`;
+}
+
+function fmt(n) { return "$" + Number(n).toLocaleString(); }
+
+function applyState(s, ph) {
+  lastState = s;
+  phase = ph || phase;
+
+  // ── Info bar
+  document.getElementById("balance").textContent      = fmt(s.bankBalance);
+  document.getElementById("bet-display").textContent  = s.betAmount ? fmt(s.betAmount) : "$0";
+  document.getElementById("split-bet-display").textContent = s.splitBet ? fmt(s.splitBet) : "—";
+
+  // ── Dealer hand
+  const hideHole = (phase === "player");
+  document.getElementById("dealer-hand").innerHTML =
+    s.dealerHand.map((c, i) => cardHTML(c, hideHole && i === 1)).join("");
+  document.getElementById("dealer-value").textContent =
+    s.dealerHand.length === 0 ? "" :
+    hideHole ? "?" : (s.dealerValue ?? "");
+  let dStat = "";
+  if (s.dealerBJ)   dStat = badge("Blackjack","bj");
+  else if (!hideHole && s.dealerBust) dStat = badge("Bust","bust");
+  document.getElementById("dealer-status").innerHTML = dStat;
+
+  // ── Player main hand
+  const mainActive = (phase === "player" && currentHand === 0);
+  document.getElementById("player-hand").innerHTML =
+    s.playerHand.map(c => cardHTML(c, false)).join("");
+  document.getElementById("player-hand").className =
+    "hand-row" + (mainActive ? " active-hand" : "");
+  document.getElementById("player-value").textContent =
+    s.playerHand.length > 0 ? s.playerValue : "";
+  let pStat = "";
+  if (s.playerBJ)       pStat = badge("Blackjack","bj");
+  else if (s.playerBust) pStat = badge("Bust","bust");
+  else if (s.playerStanding && phase !== "betting") pStat = badge("Stand","stand");
+  document.getElementById("player-status").innerHTML = pStat;
+
+  // ── Split hand (inject/remove dynamically)
+  const splitWrap = document.getElementById("split-wrap");
+  if (splitWrap) splitWrap.remove();
+  if (s.didSplit && s.splitHand.length > 0) {
+    const splitActive = (phase === "player" && currentHand === 1);
+    const div = document.createElement("div");
+    div.id = "split-wrap";
+    div.style.cssText = "display:flex;align-items:flex-end;gap:8px;";
+    const spStat = s.splitBust ? badge("Bust","bust") :
+                   (s.splitStanding && phase !== "betting") ? badge("Stand","stand") : "";
+    div.innerHTML = `
+      <div class="split-label">Split</div>
+      <div class="hand-row${splitActive ? " active-hand" : ""}" id="split-hand">
+        ${s.splitHand.map(c => cardHTML(c, false)).join("")}
+      </div>
+      <div class="hand-value" id="split-value">${s.splitValue || ""}</div>
+      ${spStat}
+    `;
+    document.getElementById("player-label-row").appendChild(div);
+  }
+
+  // ── Section visibility
+  const isBetting = (phase === "betting");
+  const isPlayer  = (phase === "player");
+  const isResult  = (phase === "result");
+
+  document.getElementById("chips-section").style.display  = isBetting ? "flex" : "none";
+  document.getElementById("chips-section").style.flexDirection = "column";
+  document.getElementById("actions-section").style.display = isPlayer  ? "flex" : "none";
+  document.getElementById("next-section").style.display   = isResult  ? "flex" : "none";
+
+  // ── Deal button
+  document.getElementById("deal-btn").disabled = !s.betAmount || s.betAmount === 0;
+
+  // ── Action buttons (enable/disable based on server-provided flags)
+  if (isPlayer) {
+    if (currentHand === 0) {
+      document.getElementById("btn-double").disabled = !s.canDoubleDown;
+      document.getElementById("btn-split").disabled  = !s.canSplit;
+      document.getElementById("btn-insure").disabled = !s.canInsure;
+      document.getElementById("btn-surr").disabled   = !s.canSurrender;
+    } else {
+      document.getElementById("btn-double").disabled = !s.canSplitDoubleDown;
+      document.getElementById("btn-split").disabled  = true;
+      document.getElementById("btn-insure").disabled = true;
+      document.getElementById("btn-surr").disabled   = true;
+    }
+  }
+
+  // ── Phase label
+  const labels = { betting:"Betting", player:"Your Turn", dealer:"Dealer's Turn", result:"Round Over" };
+  document.getElementById("phase-label").textContent = "Phase: " + (labels[phase] || "");
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AUTO-RESULT DISPLAY (server returns result messages
+//  via balance changes; we compose display messages here)
+// ═══════════════════════════════════════════════════════════
+function setMsg(text, cls) {
+  const el = document.getElementById("message");
+  el.className = "message-box " + (cls || "info");
+  el.textContent = text;
+}
+
+// Watch for result phase and show a friendly message
+let _prevBalance = 50000;
+function handleResultMessage(s) {
+  const delta = s.bankBalance - _prevBalance;
+  if (s.playerBJ && !s.dealerBJ) {
+    setMsg("🃏 BLACKJACK! Paid 3:2", "bj");
+  } else if (s.dealerBJ && !s.playerBJ) {
+    setMsg("Dealer Blackjack — " + (s.insured ? "Insurance saves you!" : "You lose " + fmt(s.betAmount)), "lose");
+  } else if (s.hasSurrendered) {
+    setMsg("Surrendered — half bet returned", "push");
+  } else if (delta > 0) {
+    setMsg("You win " + fmt(delta) + "! 🎉", "win");
+  } else if (delta === 0) {
+    setMsg("Push — bet returned", "push");
+  } else {
+    setMsg("Dealer wins. Better luck next round.", "lose");
+  }
+  _prevBalance = s.bankBalance;
+}
+
+// Override applyState to also trigger result message
+const _origApply = applyState;
+// Re-define to add result hook:
+function applyState(s, ph) {
+  if ((ph || phase) === "result" && lastState && ph === "result") {
+    _prevBalance = lastState.bankBalance;
+  }
+  // call original logic inline:
+  lastState = s;
+  phase = ph || phase;
+  document.getElementById("balance").textContent      = fmt(s.bankBalance);
+  document.getElementById("bet-display").textContent  = s.betAmount ? fmt(s.betAmount) : "$0";
+  document.getElementById("split-bet-display").textContent = s.splitBet ? fmt(s.splitBet) : "—";
+  const hideHole = (phase === "player");
+  document.getElementById("dealer-hand").innerHTML = s.dealerHand.map((c,i) => cardHTML(c, hideHole && i===1)).join("");
+  document.getElementById("dealer-value").textContent =
+    s.dealerHand.length===0 ? "" : hideHole ? "?" : (s.dealerValue ?? "");
+  let dStat = "";
+  if (s.dealerBJ)   dStat = badge("Blackjack","bj");
+  else if (!hideHole && s.dealerBust) dStat = badge("Bust","bust");
+  document.getElementById("dealer-status").innerHTML = dStat;
+  const mainActive = (phase==="player" && currentHand===0);
+  document.getElementById("player-hand").innerHTML = s.playerHand.map(c=>cardHTML(c,false)).join("");
+  document.getElementById("player-hand").className = "hand-row"+(mainActive?" active-hand":"");
+  document.getElementById("player-value").textContent = s.playerHand.length>0 ? s.playerValue : "";
+  let pStat = "";
+  if (s.playerBJ)        pStat = badge("Blackjack","bj");
+  else if (s.playerBust)  pStat = badge("Bust","bust");
+  else if (s.playerStanding && phase!=="betting") pStat = badge("Stand","stand");
+  document.getElementById("player-status").innerHTML = pStat;
+  const sw = document.getElementById("split-wrap");
+  if (sw) sw.remove();
+  if (s.didSplit && s.splitHand.length>0) {
+    const splitActive = (phase==="player" && currentHand===1);
+    const div = document.createElement("div");
+    div.id = "split-wrap";
+    div.style.cssText = "display:flex;align-items:flex-end;gap:8px;";
+    const spStat = s.splitBust ? badge("Bust","bust") :
+                   (s.splitStanding && phase!=="betting") ? badge("Stand","stand") : "";
+    div.innerHTML = `
+      <div class="split-label">Split</div>
+      <div class="hand-row${splitActive?" active-hand":""}" id="split-hand">
+        ${s.splitHand.map(c=>cardHTML(c,false)).join("")}
+      </div>
+      <div class="hand-value">${s.splitValue||""}</div>${spStat}`;
+    document.getElementById("player-label-row").appendChild(div);
+  }
+  const isBetting=(phase==="betting"), isPlayer=(phase==="player"), isResult=(phase==="result");
+  document.getElementById("chips-section").style.display  = isBetting ? "flex" : "none";
+  document.getElementById("chips-section").style.flexDirection = "column";
+  document.getElementById("actions-section").style.display = isPlayer  ? "flex" : "none";
+  document.getElementById("next-section").style.display   = isResult  ? "flex" : "none";
+  document.getElementById("deal-btn").disabled = !s.betAmount || s.betAmount===0;
+  if (isPlayer) {
+    if (currentHand===0) {
+      document.getElementById("btn-double").disabled = !s.canDoubleDown;
+      document.getElementById("btn-split").disabled  = !s.canSplit;
+      document.getElementById("btn-insure").disabled = !s.canInsure;
+      document.getElementById("btn-surr").disabled   = !s.canSurrender;
+    } else {
+      document.getElementById("btn-double").disabled = !s.canSplitDoubleDown;
+      document.getElementById("btn-split").disabled  = true;
+      document.getElementById("btn-insure").disabled = true;
+      document.getElementById("btn-surr").disabled   = true;
+    }
+  }
+  const labels={betting:"Betting",player:"Your Turn",dealer:"Dealer's Turn",result:"Round Over"};
+  document.getElementById("phase-label").textContent = "Phase: "+(labels[phase]||"");
+
+  if (ph==="result") handleResultMessage(s);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT — fetch initial state from server
+// ═══════════════════════════════════════════════════════════
+(async () => {
+  const data = await apiCall("state");
+  if (data) {
+    _prevBalance = data.state.bankBalance;
+    applyState(data.state, "betting");
+  }
+})();
+</script>
+</body>
+</html>
